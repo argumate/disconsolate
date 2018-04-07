@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<style>
+@import url("disconsolate.css");
+</style>
+<script src="disconsolate.js"></script>
+
+<body class="disconsolate">
+
+<script>
+var single_box = {
+    top_left: "\u250C",
+    top_right: "\u2510",
+    bottom_left: "\u2514",
+    bottom_right: "\u2518",
+    hori: "\u2500",
+    vert: "\u2502",
+};
+
+var double_box = {
+    top_left: "\u2554",
+    top_right: "\u2557",
+    bottom_left: "\u255A",
+    bottom_right: "\u255D",
+    hori: "\u2550",
+    vert: "\u2551",
+};
+
+var double_hori_box = {
+    top_left: "\u2552",
+    top_right: "\u2555",
+    bottom_left: "\u2558",
+    bottom_right: "\u255B",
+    hori: "\u2550",
+    vert: "\u2502",
+};
+
+var double_vert_box = {
+    top_left: "\u2553",
+    top_right: "\u2556",
+    bottom_left: "\u2559",
+    bottom_right: "\u255C",
+    hori: "\u2500",
+    vert: "\u2551",
+};
+
+var single_panels = {
+    outer: single_box,
+    inner: single_box,
+    tee_left: "\u251C",
+    tee_right: "\u2524",
+    tee_top: "\u252C",
+    tee_bottom: "\u2534",
+    tee_middle: "\u253C",
+};
+
+var double_panels = {
+    outer: double_box,
+    inner: double_box,
+    tee_left: "\u2560",
+    tee_right: "\u2563",
+    tee_top: "\u2566",
+    tee_bottom: "\u2569",
+    tee_middle: "\u256C",
+};
+
+var double_hori_panels = {
+    outer: double_hori_box,
+    inner: double_hori_box,
+    tee_left: "\u255E",
+    tee_right: "\u2561",
+    tee_top: "\u2564",
+    tee_bottom: "\u2567",
+    tee_middle: "\u256A",
+};
+
+var double_vert_panels = {
+    outer: double_vert_box,
+    inner: double_vert_box,
+    tee_left: "\u255F",
+    tee_right: "\u2562",
+    tee_top: "\u2565",
+    tee_bottom: "\u2568",
+    tee_middle: "\u256B",
+};
+
+var double_single_panels = {
+    outer: double_box,
+    inner: single_box,
+    tee_left: "\u255F",
+    tee_right: "\u2562",
+    tee_top: "\u2564",
+    tee_bottom: "\u2567",
+    tee_middle: "\u253C",
+};
+
+var w = 60, h = 15;
+var screen = new disconsolate.Screen(w, h);
+document.body.appendChild(screen.element);
+
+var black = 0;
+var blue = 1
+var white = 2;
+var gray = 3;
+
+screen.setRect(0, 0, w, h, " ", {bg:blue});
+
+function draw_box(screen, box, x, y, w, h) {
+    screen.setChar(x, y, box.top_left);
+    screen.setChar(x+w-1, y, box.top_right);
+    screen.setChar(x, y+h-1, box.bottom_left);
+    screen.setChar(x+w-1, y+h-1, box.bottom_right);
+    screen.setRow(x+1, y, w-2, box.hori);
+    screen.setRow(x+1, y+h-1, w-2, box.hori);
+    screen.setCol(x, y+1, h-2, box.vert);
+    screen.setCol(x+w-1, y+1, h-2, box.vert);
+}
+
+function draw_box_3d(screen, box, x, y, w, h, title, text) {
+    title = " " + title + " ";
+    screen.setRect(x, y, w, h, " ", {bg:gray});
+    screen.setChar(x, y, box.top_left, {fg:white});
+    screen.setChar(x+w-1, y, box.top_right, {fg:black});
+    screen.setChar(x, y+h-1, box.bottom_left, {fg:white});
+    screen.setChar(x+w-1, y+h-1, box.bottom_right, {fg:black});
+    screen.setRow(x+1, y, w-2, box.hori, {fg:white});
+    screen.setRow(x+1, y+h-1, w-2, box.hori, {fg:black});
+    screen.setCol(x, y+1, h-2, box.vert, {fg:white});
+    screen.setCol(x+w-1, y+1, h-2, box.vert, {fg:black});
+    screen.setText(Math.floor(x+(w-title.length)/2), y, title, {fg:white});
+    screen.setText(Math.floor(x+(w-text.length)/2), Math.floor(y+h/2), text, {fg:black});
+}
+
+draw_box_3d(screen, single_box, 8, 4, 30, 7, "Chill", "I got you fam");
+
+screen.refresh();
+
+window.requestAnimationFrame(step);
+
+var start = null;
+
+function step(timestamp) {
+    if (!start) start = timestamp;
+    var elapsed = timestamp - start;
+    var frame = Math.floor(elapsed/100) % 4;
+    var chars = ['-', '\\', '|', '/'];
+    screen.setChar(w-1, h-1, chars[frame], {fg:white});
+    screen.refresh();
+    window.requestAnimationFrame(step);
+}
+
+</script>
+
+</body>
+

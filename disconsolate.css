@@ -1,0 +1,31 @@
+/* font thanks to https://int10h.org/oldschool-pc-fonts/ */
+
+@font-face {
+    font-family: IBMVGA8;
+    src: url(fonts/ibm_vga8.eot);
+    src: url(fonts/ibm_vga8.eot?#iefix) format('embedded-opentype'),
+        url(fonts/ibm_vga8.woff2) format('woff2'),
+        url(fonts/ibm_vga8.woff) format('woff'),
+        url(fonts/ibm_vga8.ttf) format('truetype');
+    font-weight: normal;
+    font-style: normal
+}
+
+.disconsolate {
+    color: #999;
+    background: #000;
+    font-family: IBMVGA8;
+    font-size: 16px;
+    line-height: 16px
+}
+
+.fg0 { color: black }
+.fg1 { color: blue }
+.fg2 { color: white }
+.fg3 { color: gray }
+
+.bg0 { background: black }
+.bg1 { background: blue }
+.bg2 { background: white }
+.bg3 { background: gray }
+

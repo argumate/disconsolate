@@ -104,33 +104,11 @@ var gray = 3;
 
 screen.setRect(0, 0, w, h, " ", {bg:blue});
 
-function draw_box(screen, box, x, y, w, h) {
-    screen.setChar(x, y, box.top_left);
-    screen.setChar(x+w-1, y, box.top_right);
-    screen.setChar(x, y+h-1, box.bottom_left);
-    screen.setChar(x+w-1, y+h-1, box.bottom_right);
-    screen.setRow(x+1, y, w-2, box.hori);
-    screen.setRow(x+1, y+h-1, w-2, box.hori);
-    screen.setCol(x, y+1, h-2, box.vert);
-    screen.setCol(x+w-1, y+1, h-2, box.vert);
-}
-
-function draw_box_3d(screen, box, x, y, w, h, title, text) {
-    title = " " + title + " ";
-    screen.setRect(x, y, w, h, " ", {bg:gray});
-    screen.setChar(x, y, box.top_left, {fg:white});
-    screen.setChar(x+w-1, y, box.top_right, {fg:black});
-    screen.setChar(x, y+h-1, box.bottom_left, {fg:white});
-    screen.setChar(x+w-1, y+h-1, box.bottom_right, {fg:black});
-    screen.setRow(x+1, y, w-2, box.hori, {fg:white});
-    screen.setRow(x+1, y+h-1, w-2, box.hori, {fg:black});
-    screen.setCol(x, y+1, h-2, box.vert, {fg:white});
-    screen.setCol(x+w-1, y+1, h-2, box.vert, {fg:black});
-    screen.setText(Math.floor(x+(w-title.length)/2), y, title, {fg:white});
-    screen.setText(Math.floor(x+(w-text.length)/2), Math.floor(y+h/2), text, {fg:black});
-}
-
-draw_box_3d(screen, single_box, 8, 4, 30, 7, "Chill", "I got you fam");
+var label = new disconsolate.Label("I got you fam", {fg:black});
+var panel = new disconsolate.Padding({hori: 4, vert: 2}, label);
+var frame = new disconsolate.Frame3d(single_box, "Chill", panel, {fg:white,bg:gray}, {fg:black});
+frame.layout();
+frame.draw(screen, 8, 4);
 
 screen.refresh();
 

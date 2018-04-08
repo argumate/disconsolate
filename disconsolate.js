@@ -78,7 +78,7 @@ disconsolate.Screen.prototype.setText = function(x, y, str, attr) {
     for (var i = 0; i < str.length; ++i) {
         this.setChar(x+i, y, str.charAt(i), attr);
     }
-}
+};
 
 disconsolate.Screen.prototype.refresh = function() {
     for (var y = 0; y < this.h; ++y) {
@@ -111,6 +111,156 @@ disconsolate.Screen.prototype.refresh = function() {
         span.textContent = chars;
         span.className = className;
         return span;
+    }
+};
+
+disconsolate.Label = function(text, attrs) {
+    this.text = text;
+    this.attrs = attrs;
+    this.layout();
+};
+
+disconsolate.Label.prototype.layout = function() {
+    this.w = this.text.length;
+    this.h = 1;
+};
+
+disconsolate.Label.prototype.draw = function(screen, x, y) {
+    screen.setText(x, y, this.text, this.attrs);
+};
+
+disconsolate.Padding = function(pad, child) {
+    this.pad = {
+        left: pad.left || pad.hori || 0,
+        right: pad.right || pad.hori || 0,
+        top: pad.top || pad.vert || 0,
+        bottom: pad.bottom || pad.vert || 0
+    };
+    this.child = child;
+};
+
+disconsolate.Padding.prototype.layout = function() {
+    this.w = this.pad.left + this.pad.right;
+    this.h = this.pad.top + this.pad.bottom;
+    if (this.child) {
+        this.child.layout();
+        this.w += this.child.w;
+        this.h += this.child.h;
+    }
+};
+
+disconsolate.Padding.prototype.draw = function(screen, x, y) {
+    if (this.child) {
+        this.child.draw(screen, x+this.pad.left, y+this.pad.top);
+    }
+};
+
+disconsolate.Frame = function(box, title, child, attrs) {
+    this.box = box;
+    this.title = " "+title+" ";
+    this.child = child;
+    this.attrs = attrs;
+};
+
+disconsolate.Frame.prototype.layout = function() {
+    this.w = 2;
+    this.h = 2;
+    if (this.child) {
+        this.child.layout();
+        this.w += this.child.w;
+        this.h += this.child.h;
+    }
+    this.w = Math.max(this.w, this.title.length+2);
+};
+
+disconsolate.Frame.prototype.draw = function(screen, x, y) {
+    var box = this.box;
+    screen.setRect(x, y, this.w, this.h, " ", this.attrs);
+    screen.setChar(x, y, box.top_left);
+    screen.setChar(x+this.w-1, y, box.top_right);
+    screen.setChar(x, y+this.h-1, box.bottom_left);
+    screen.setChar(x+this.w-1, y+this.h-1, box.bottom_right);
+    screen.setRow(x+1, y, this.w-2, box.hori);
+    screen.setRow(x+1, y+this.h-1, this.w-2, box.hori);
+    screen.setCol(x, y+1, this.h-2, box.vert);
+    screen.setCol(x+this.w-1, y+1, this.h-2, box.vert);
+    screen.setText(Math.floor(x+(this.w-this.title.length)/2), y, this.title);
+    if (this.child) this.child.draw(screen, x+1, y+1);
+};
+
+disconsolate.Frame3d = function(box, title, child, attrs, dark_attrs) {
+    this.box = box;
+    this.title = " "+title+" ";
+    this.child = child;
+    this.attrs = attrs;
+    this.dark_attrs = dark_attrs;
+};
+
+disconsolate.Frame3d.prototype.layout = function() {
+    this.w = 2;
+    this.h = 2;
+    if (this.child) {
+        this.child.layout();
+        this.w += this.child.w;
+        this.h += this.child.h;
+    }
+    this.w = Math.max(this.w, this.title.length+2);
+};
+
+disconsolate.Frame3d.prototype.draw = function(screen, x, y) {
+    var box = this.box;
+    screen.setRect(x, y, this.w, this.h, " ", this.attrs);
+    screen.setChar(x, y, box.top_left);
+    screen.setChar(x+this.w-1, y, box.top_right, this.dark_attrs);
+    screen.setChar(x, y+this.h-1, box.bottom_left);
+    screen.setChar(x+this.w-1, y+this.h-1, box.bottom_right, this.dark_attrs);
+    screen.setRow(x+1, y, this.w-2, box.hori);
+    screen.setRow(x+1, y+this.h-1, this.w-2, box.hori, this.dark_attrs);
+    screen.setCol(x, y+1, this.h-2, box.vert);
+    screen.setCol(x+this.w-1, y+1, this.h-2, box.vert, this.dark_attrs);
+    screen.setText(Math.floor(x+(this.w-this.title.length)/2), y, this.title);
+    if (this.child) this.child.draw(screen, x+1, y+1);
+};
+
+disconsolate.Grid = function(rows) {
+    this.rows = rows;
+};
+
+disconsolate.Grid.prototype.layout = function() {
+    this.cols = [];
+    this.w = 0;
+    this.h = 0;
+    for (var i = 0; i < this.rows.length; ++i) {
+        var row = this.rows[i];
+        var row_h = 0;
+        for (var j = 0; j < row.length; ++j) {
+            row[j].layout();
+            if (this.cols.length < j+1) {
+                this.cols.push({w: row[j].w});
+            } else {
+                this.cols[j].w = Math.max(this.cols[j].w, row[j].w);
+            }
+            row_h = Math.max(row_h, row[j].h);
+        }
+        this.h += row_h;
+    }
+    for (var i = 0; i < this.cols.length; ++i) {
+        this.w += this.cols[i].w;
+    }
+};
+
+disconsolate.Grid.prototype.draw = function(screen, x, y) {
+    var y_off = y;
+    for (var i = 0; i < this.rows.length; ++i) {
+        var row = this.rows[i];
+        var row_h = 0;
+        var x_off = x;
+        for (var j = 0; j < row.length; ++j) {
+            row[j].draw(screen, x_off, y_off);
+            row_h = Math.max(row_h, row[j].h);
+            x_off += this.cols[j].w;
+        }
+        y_off += row_h;
     }
 };
 

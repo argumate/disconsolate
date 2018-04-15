@@ -104,14 +104,18 @@ var gray = 3;
 
 screen.setRect(0, 0, w, h, " ", {bg:blue});
 
+var button_label = new disconsolate.Label("[ Ok ]");
+var button = new disconsolate.Button(button_label, function() { alert("clicked!"); }, null);
 var label = new disconsolate.Label("I got you fam", {fg:black});
-var panel = new disconsolate.Padding({hori: 4, vert: 2}, label);
+var grid = new disconsolate.Grid([[label],[button]]);
+var panel = new disconsolate.Padding({hori: 4, vert: 2}, grid);
 var frame = new disconsolate.Frame3d(single_box, "Chill", panel, {fg:white,bg:gray}, {fg:black});
-frame.layout();
-frame.draw(screen, 8, 4);
+screen.root = new disconsolate.Root(w, h, frame, 8, 4);
+screen.root.layout();
+screen.root.draw(screen, 0, 0);
 
 screen.refresh();
-
+/*
 window.requestAnimationFrame(step);
 
 var start = null;
@@ -125,7 +129,7 @@ function step(timestamp) {
     screen.refresh();
     window.requestAnimationFrame(step);
 }
-
+*/
 </script>
 
 </body>

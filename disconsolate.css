@@ -16,7 +16,8 @@
     background: #000;
     font-family: IBMVGA8;
     font-size: 16px;
-    line-height: 16px
+    line-height: 16px;
+    position: relative
 }
 
 .fg0 { color: black }

@@ -34,6 +34,18 @@ disconsolate.Screen = function(w, h) {
     this.vram = new Uint32Array(this.w * this.h);
     this.element = document.createElement("pre");
     this.element.className = "disconsolate";
+    var self = this;
+    this.element.addEventListener("click", function(ev) {
+        var x = Math.floor((ev.offsetX+ev.target.offsetLeft)/8);
+        var y = Math.floor((ev.offsetY+ev.target.offsetTop)/16);
+        if (self.root) {
+            var widget = self.root.pick(x, y);
+            if (widget && widget.click) {
+                widget.click();
+            }
+        }
+    }, false);
+    this.root = null;
     this.lines = [];
 
     for (var y = 0; y < this.h; ++y) {
@@ -114,155 +126,248 @@ disconsolate.Screen.prototype.refresh = function() {
     }
 };
 
-disconsolate.Label = function(text, attrs) {
-    this.text = text;
-    this.attrs = attrs;
-    this.layout();
+disconsolate.Widget = function() { };
+
+disconsolate.Widget.subclass = function(props) {
+    props.constructor.prototype = Object.create(this.prototype);
+    for (var i in props) {
+        props.constructor.prototype[i] = props[i];
+    }
+    return props.constructor;
 };
 
-disconsolate.Label.prototype.layout = function() {
-    this.w = this.text.length;
-    this.h = 1;
+disconsolate.Widget.prototype.pick = function(x, y) {
+    if (x >= 0 && x < this.w && y >= 0 && y < this.h) {
+        return this;
+    } else {
+        return null;
+    }
 };
 
-disconsolate.Label.prototype.draw = function(screen, x, y) {
-    screen.setText(x, y, this.text, this.attrs);
-};
-
-disconsolate.Padding = function(pad, child) {
-    this.pad = {
-        left: pad.left || pad.hori || 0,
-        right: pad.right || pad.hori || 0,
-        top: pad.top || pad.vert || 0,
-        bottom: pad.bottom || pad.vert || 0
-    };
-    this.child = child;
-};
-
-disconsolate.Padding.prototype.layout = function() {
-    this.w = this.pad.left + this.pad.right;
-    this.h = this.pad.top + this.pad.bottom;
-    if (this.child) {
+disconsolate.Root = disconsolate.Widget.subclass({
+    constructor: function(w, h, child, x, y) {
+        this.w = w;
+        this.h = h;
+        this.child = child;
+        this.x = x;
+        this.y = y;
+    },
+    layout: function() {
         this.child.layout();
-        this.w += this.child.w;
-        this.h += this.child.h;
+    },
+    draw: function(screen, _x, _y) {
+        this.child.draw(screen, this.x, this.y);
+    },
+    pick: function(x, y) {
+        return this.child.pick(x - this.x, y - this.y);
     }
-};
+});
 
-disconsolate.Padding.prototype.draw = function(screen, x, y) {
-    if (this.child) {
-        this.child.draw(screen, x+this.pad.left, y+this.pad.top);
+disconsolate.Label = disconsolate.Widget.subclass({
+    constructor: function(text, attrs) {
+        this.text = text;
+        this.attrs = attrs;
+        this.layout();
+    },
+    layout: function() {
+        this.w = this.text.length;
+        this.h = 1;
+    },
+    draw: function(screen, x, y) {
+        screen.setText(x, y, this.text, this.attrs);
     }
-};
+});
 
-disconsolate.Frame = function(box, title, child, attrs) {
-    this.box = box;
-    this.title = " "+title+" ";
-    this.child = child;
-    this.attrs = attrs;
-};
-
-disconsolate.Frame.prototype.layout = function() {
-    this.w = 2;
-    this.h = 2;
-    if (this.child) {
-        this.child.layout();
-        this.w += this.child.w;
-        this.h += this.child.h;
+disconsolate.Padding = disconsolate.Widget.subclass({
+    constructor: function(pad, child) {
+        this.pad = {
+            left: pad.left || pad.hori || 0,
+            right: pad.right || pad.hori || 0,
+            top: pad.top || pad.vert || 0,
+            bottom: pad.bottom || pad.vert || 0
+        };
+        this.child = child;
+    },
+    layout: function() {
+        this.w = this.pad.left + this.pad.right;
+        this.h = this.pad.top + this.pad.bottom;
+        if (this.child) {
+            this.child.layout();
+            this.w += this.child.w;
+            this.h += this.child.h;
+        }
+    },
+    draw: function(screen, x, y) {
+        if (this.child) {
+            this.child.draw(screen, x+this.pad.left, y+this.pad.top);
+        }
+    },
+    pick: function(x, y) {
+        if (this.child) {
+            return this.child.pick(x-this.pad.left, y-this.pad.top);
+        } else {
+            return null;
+        }
     }
-    this.w = Math.max(this.w, this.title.length+2);
-};
+});
 
-disconsolate.Frame.prototype.draw = function(screen, x, y) {
-    var box = this.box;
-    screen.setRect(x, y, this.w, this.h, " ", this.attrs);
-    screen.setChar(x, y, box.top_left);
-    screen.setChar(x+this.w-1, y, box.top_right);
-    screen.setChar(x, y+this.h-1, box.bottom_left);
-    screen.setChar(x+this.w-1, y+this.h-1, box.bottom_right);
-    screen.setRow(x+1, y, this.w-2, box.hori);
-    screen.setRow(x+1, y+this.h-1, this.w-2, box.hori);
-    screen.setCol(x, y+1, this.h-2, box.vert);
-    screen.setCol(x+this.w-1, y+1, this.h-2, box.vert);
-    screen.setText(Math.floor(x+(this.w-this.title.length)/2), y, this.title);
-    if (this.child) this.child.draw(screen, x+1, y+1);
-};
-
-disconsolate.Frame3d = function(box, title, child, attrs, dark_attrs) {
-    this.box = box;
-    this.title = " "+title+" ";
-    this.child = child;
-    this.attrs = attrs;
-    this.dark_attrs = dark_attrs;
-};
-
-disconsolate.Frame3d.prototype.layout = function() {
-    this.w = 2;
-    this.h = 2;
-    if (this.child) {
-        this.child.layout();
-        this.w += this.child.w;
-        this.h += this.child.h;
+disconsolate.Frame = disconsolate.Widget.subclass({
+    constructor: function(box, title, child, attrs) {
+        this.box = box;
+        this.title = " "+title+" ";
+        this.child = child;
+        this.attrs = attrs;
+    },
+    layout: function() {
+        this.w = 2;
+        this.h = 2;
+        if (this.child) {
+            this.child.layout();
+            this.w += this.child.w;
+            this.h += this.child.h;
+        }
+        this.w = Math.max(this.w, this.title.length+2);
+    },
+    draw: function(screen, x, y) {
+        var box = this.box;
+        screen.setRect(x, y, this.w, this.h, " ", this.attrs);
+        screen.setChar(x, y, box.top_left);
+        screen.setChar(x+this.w-1, y, box.top_right);
+        screen.setChar(x, y+this.h-1, box.bottom_left);
+        screen.setChar(x+this.w-1, y+this.h-1, box.bottom_right);
+        screen.setRow(x+1, y, this.w-2, box.hori);
+        screen.setRow(x+1, y+this.h-1, this.w-2, box.hori);
+        screen.setCol(x, y+1, this.h-2, box.vert);
+        screen.setCol(x+this.w-1, y+1, this.h-2, box.vert);
+        screen.setText(Math.floor(x+(this.w-this.title.length)/2), y, this.title);
+        if (this.child) this.child.draw(screen, x+1, y+1);
+    },
+    pick: function(x, y) {
+        if (this.child) {
+            return this.child.pick(x-1, y-1);
+        } else {
+            return null;
+        }
     }
-    this.w = Math.max(this.w, this.title.length+2);
-};
+});
 
-disconsolate.Frame3d.prototype.draw = function(screen, x, y) {
-    var box = this.box;
-    screen.setRect(x, y, this.w, this.h, " ", this.attrs);
-    screen.setChar(x, y, box.top_left);
-    screen.setChar(x+this.w-1, y, box.top_right, this.dark_attrs);
-    screen.setChar(x, y+this.h-1, box.bottom_left);
-    screen.setChar(x+this.w-1, y+this.h-1, box.bottom_right, this.dark_attrs);
-    screen.setRow(x+1, y, this.w-2, box.hori);
-    screen.setRow(x+1, y+this.h-1, this.w-2, box.hori, this.dark_attrs);
-    screen.setCol(x, y+1, this.h-2, box.vert);
-    screen.setCol(x+this.w-1, y+1, this.h-2, box.vert, this.dark_attrs);
-    screen.setText(Math.floor(x+(this.w-this.title.length)/2), y, this.title);
-    if (this.child) this.child.draw(screen, x+1, y+1);
-};
+disconsolate.Frame3d = disconsolate.Widget.subclass({
+    constructor: function(box, title, child, attrs, dark_attrs) {
+        this.box = box;
+        this.title = " "+title+" ";
+        this.child = child;
+        this.attrs = attrs;
+        this.dark_attrs = dark_attrs;
+    },
+    layout: function() {
+        this.w = 2;
+        this.h = 2;
+        if (this.child) {
+            this.child.layout();
+            this.w += this.child.w;
+            this.h += this.child.h;
+        }
+        this.w = Math.max(this.w, this.title.length+2);
+    },
+    draw: function(screen, x, y) {
+        var box = this.box;
+        screen.setRect(x, y, this.w, this.h, " ", this.attrs);
+        screen.setChar(x, y, box.top_left);
+        screen.setChar(x+this.w-1, y, box.top_right, this.dark_attrs);
+        screen.setChar(x, y+this.h-1, box.bottom_left);
+        screen.setChar(x+this.w-1, y+this.h-1, box.bottom_right, this.dark_attrs);
+        screen.setRow(x+1, y, this.w-2, box.hori);
+        screen.setRow(x+1, y+this.h-1, this.w-2, box.hori, this.dark_attrs);
+        screen.setCol(x, y+1, this.h-2, box.vert);
+        screen.setCol(x+this.w-1, y+1, this.h-2, box.vert, this.dark_attrs);
+        screen.setText(Math.floor(x+(this.w-this.title.length)/2), y, this.title);
+        if (this.child) this.child.draw(screen, x+1, y+1);
+    },
+    pick: function(x, y) {
+        if (this.child) {
+            return this.child.pick(x-1, y-1);
+        } else {
+            return null;
+        }
+    }
+});
 
-disconsolate.Grid = function(rows) {
-    this.rows = rows;
-};
-
-disconsolate.Grid.prototype.layout = function() {
-    this.cols = [];
-    this.w = 0;
-    this.h = 0;
-    for (var i = 0; i < this.rows.length; ++i) {
-        var row = this.rows[i];
-        var row_h = 0;
-        for (var j = 0; j < row.length; ++j) {
-            row[j].layout();
-            if (this.cols.length < j+1) {
-                this.cols.push({w: row[j].w});
-            } else {
-                this.cols[j].w = Math.max(this.cols[j].w, row[j].w);
+disconsolate.Grid = disconsolate.Widget.subclass({
+    constructor: function(cells) {
+        this.cells = cells;
+    },
+    layout: function() {
+        this.cols = [];
+        this.rows = [];
+        this.w = 0;
+        this.h = 0;
+        for (var i = 0; i < this.cells.length; ++i) {
+            var row = this.cells[i];
+            var row_h = 0;
+            for (var j = 0; j < row.length; ++j) {
+                row[j].layout();
+                if (this.cols.length < j+1) {
+                    this.cols.push({w: row[j].w});
+                } else {
+                    this.cols[j].w = Math.max(this.cols[j].w, row[j].w);
+                }
+                row_h = Math.max(row_h, row[j].h);
             }
-            row_h = Math.max(row_h, row[j].h);
+            this.rows.push({h: row_h});
+            this.h += row_h;
         }
-        this.h += row_h;
+        for (var i = 0; i < this.cols.length; ++i) {
+            this.w += this.cols[i].w;
+        }
+    },
+    draw: function(screen, x, y) {
+        var y_off = y;
+        for (var i = 0; i < this.cells.length; ++i) {
+            var row = this.cells[i];
+            var x_off = x;
+            for (var j = 0; j < row.length; ++j) {
+                row[j].draw(screen, x_off, y_off);
+                x_off += this.cols[j].w;
+            }
+            y_off += this.rows[i].h;
+        }
+    },
+    pick: function(x, y) {
+        var i, j;
+        for (i = 0; i < this.rows.length - 1; ++i) {
+            if (y < this.rows[i].h) break;
+            y -= this.rows[i].h;
+        }
+        for (j = 0; j < this.cols.length - 1; ++j) {
+            if (x < this.cols[j].w) break;
+            x -= this.cols[j].w;
+        }
+        if (i < this.cells.length && j < this.cells[i].length) {
+            return this.cells[i][j].pick(x, y);
+        } else {
+            return null;
+        }
     }
-    for (var i = 0; i < this.cols.length; ++i) {
-        this.w += this.cols[i].w;
-    }
-};
+});
 
-disconsolate.Grid.prototype.draw = function(screen, x, y) {
-    var y_off = y;
-    for (var i = 0; i < this.rows.length; ++i) {
-        var row = this.rows[i];
-        var row_h = 0;
-        var x_off = x;
-        for (var j = 0; j < row.length; ++j) {
-            row[j].draw(screen, x_off, y_off);
-            row_h = Math.max(row_h, row[j].h);
-            x_off += this.cols[j].w;
-        }
-        y_off += row_h;
+disconsolate.Button = disconsolate.Widget.subclass({
+    constructor: function(child, callback, data) {
+        this.child = child;
+        this.callback = callback;
+        this.data = data;
+    },
+    layout: function() {
+        this.child.layout();
+        this.w = this.child.w;
+        this.h = this.child.h;
+    },
+    draw: function(screen, x, y) {
+        this.child.draw(screen, x, y);
+    },
+    click: function() {
+        this.callback(this.data);
     }
-};
+});
 
 }();
 
